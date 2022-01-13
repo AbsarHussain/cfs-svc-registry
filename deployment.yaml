@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cfs-service-registry
+  namespace: cfs-registry-services-ns
+  # namespace: jenkins-pipeline-ns
+  labels:
+    app: cfs-service-registry
+    environment: dev
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1 # how many pods we can add at a time
+      maxUnavailable: 1 # maxUnavailable define how many pods can be unavailable
+  selector:
+    matchLabels:
+      app: cfs-service-registry
+  template:
+    metadata:
+      labels:
+        app: cfs-service-registry
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: cfs-service-registry
+          image: gcr.io/Project/service-registry:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 30003
+          resources:
+            requests:
+                cpu: "50m"
+                memory: "300Mi"
+            limits:
+                cpu: "75m"
+                memory: "500Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cfs-service-registry-service
+  namespace: cfs-registry-services-ns
+  # namespace: jenkins-pipeline-ns
+spec:
+  type: LoadBalancer
+  selector:
+    app: cfs-service-registry
+  ports:
+    - protocol: TCP
+      port: 30003
+      targetPort: 30003
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cfs-service-registry-hpa
+  namespace: cfs-registry-services-ns
+spec:
+    scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: cfs-service-registry
+    minReplicas: 1
+    maxReplicas: 3
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 10
+        policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 10
+        selectPolicy: Min
+      scaleUp:
+        stabilizationWindowSeconds: 20
+        policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 15
+        selectPolicy: Max
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 50
+
