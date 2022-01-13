@@ -11,7 +11,7 @@ phases:
     commands:
       - echo Build started on `date`
       - mvn install
-      - mvn package -e
+	  - mvn package -e
   post_build:
     commands:
       - echo Build completed on `date`
